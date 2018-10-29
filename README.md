@@ -46,9 +46,9 @@
 
 <img src="https://github.com/HuaweiOpenlab/SmartPhoto/blob/master/readme_image/RemoteDevice_1.png?raw=true" div align=center/>
 
-<div align=center>
+<div align=left>
  <img src="https://github.com/HuaweiOpenlab/SmartPhoto/blob/master/readme_image/RemoteDevice_2.png?raw=true" width = "350" height = "460"/></div>
-<div align=center>
+<div align=left>
  <img src="https://github.com/HuaweiOpenlab/SmartPhoto/blob/master/readme_image/RemoteDevice_3.png?raw=true" width = "400" height = "700" /></div>
 
 
