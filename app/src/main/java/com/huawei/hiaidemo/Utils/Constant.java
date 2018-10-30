@@ -18,4 +18,6 @@ public class Constant {
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.CAMERA};
 
+    public static final String IMAGE_PREFIX= "HiAI_SmartPhoto_";
+
 }

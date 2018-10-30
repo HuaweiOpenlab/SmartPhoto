@@ -30,6 +30,7 @@ import pub.devrel.easypermissions.EasyPermissions;
 
 import static com.huawei.hiaidemo.Utils.Constant.CAMERA_AND_STORAGE;
 import static com.huawei.hiaidemo.Utils.Constant.CODE_SELECT_IMAGE;
+import static com.huawei.hiaidemo.Utils.Constant.IMAGE_PREFIX;
 import static com.huawei.hiaidemo.Utils.Constant.PERMISSION;
 import static com.huawei.hiaidemo.Utils.MyUtils.getTop1Result;
 
@@ -191,6 +192,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if (resultCode == RESULT_OK) {
                     ContentResolver resolver = this.getContentResolver();
                     Uri originalUri = data.getData();
+                    String filePath = MyUtils.getFilePathByUri(this, originalUri);
                     Bitmap bitmap = null;
                     try {
                         bitmap = MediaStore.Images.Media.getBitmap(resolver, originalUri);
@@ -198,9 +200,19 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                         e.printStackTrace();
                     }
                     if(bitmap != null){
-                        show_image_view.setBackground(new BitmapDrawable(getResources(), bitmap));
-                        layout_show_image.bringToFront();
-                        layout_show_image.setVisibility(View.VISIBLE);
+                        if(filePath.contains(IMAGE_PREFIX)){
+                            show_image_view.setBackground(new BitmapDrawable(getResources(), bitmap));
+                            layout_show_image.bringToFront();
+                            layout_show_image.setVisibility(View.VISIBLE);
+                        }else{
+                            //没有被打过标签的情况下
+                            Bitmap cropBitmp = MyUtils.cropBitmap(this, bitmap);
+
+                            String result = getPredictResult(cropBitmp);
+
+                            showImageObtainedView(cropBitmp, result);
+                        }
+
                     }
 
                 }

@@ -1,11 +1,15 @@
 package com.huawei.hiaidemo.Utils;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -15,11 +19,14 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Environment;
+import android.provider.DocumentsContract;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.ActionBarOverlayLayout;
+import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
@@ -28,6 +35,7 @@ import android.view.WindowManager;
 import com.huawei.hiaidemo.R;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -49,6 +57,7 @@ import static android.graphics.Color.green;
 import static android.graphics.Color.red;
 import static com.huawei.hiaidemo.Utils.Constant.GALLERY_REQUEST_CODE;
 import static com.huawei.hiaidemo.Utils.Constant.IMAGE_CAPTURE_REQUEST_CODE;
+import static com.huawei.hiaidemo.Utils.Constant.IMAGE_PREFIX;
 import static com.huawei.hiaidemo.Utils.Constant.RESIZED_HEIGHT;
 import static com.huawei.hiaidemo.Utils.Constant.RESIZED_WIDTH;
 
@@ -118,7 +127,7 @@ public class MyUtils {
         if (!appDir.exists()) {
             appDir.mkdir();
         }
-        String fileName = System.currentTimeMillis() + ".jpg";
+        String fileName = IMAGE_PREFIX + System.currentTimeMillis() + ".jpg";
         File file = new File(appDir, fileName);
         try {
             FileOutputStream fos = new FileOutputStream(file);
@@ -128,7 +137,7 @@ public class MyUtils {
             fos.close();
 
             //把文件插入到系统图库
-            MediaStore.Images.Media.insertImage(context.getContentResolver(), file.getAbsolutePath(), fileName, null);
+//            MediaStore.Images.Media.insertImage(context.getContentResolver(), file.getAbsolutePath(), fileName, null);
 
             //保存图片后发送广播通知更新数据库
             Uri uri = Uri.fromFile(file);
@@ -311,5 +320,138 @@ public class MyUtils {
         lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         //设置页面延伸到刘海区显示
         window.setAttributes(lp);
+    }
+
+    public static String getFilePathByUri(Context context, Uri uri) {
+        String path = null;
+        // 以 file:// 开头的
+        if (ContentResolver.SCHEME_FILE.equals(uri.getScheme())) {
+            path = uri.getPath();
+            return path;
+        }
+        // 以 content:// 开头的，比如 content://media/extenral/images/media/17766
+        if (ContentResolver.SCHEME_CONTENT.equals(uri.getScheme()) && Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+            Cursor cursor = context.getContentResolver().query(uri, new String[]{MediaStore.Images.Media.DATA}, null, null, null);
+            if (cursor != null) {
+                if (cursor.moveToFirst()) {
+                    int columnIndex = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
+                    if (columnIndex > -1) {
+                        path = cursor.getString(columnIndex);
+                    }
+                }
+                cursor.close();
+            }
+            return path;
+        }
+        // 4.4及之后的 是以 content:// 开头的，比如 content://com.android.providers.media.documents/document/image%3A235700
+        if (ContentResolver.SCHEME_CONTENT.equals(uri.getScheme()) && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            if (DocumentsContract.isDocumentUri(context, uri)) {
+                if (isExternalStorageDocument(uri)) {
+                    // ExternalStorageProvider
+                    final String docId = DocumentsContract.getDocumentId(uri);
+                    final String[] split = docId.split(":");
+                    final String type = split[0];
+                    if ("primary".equalsIgnoreCase(type)) {
+                        path = Environment.getExternalStorageDirectory() + "/" + split[1];
+                        return path;
+                    }
+                } else if (isDownloadsDocument(uri)) {
+                    // DownloadsProvider
+                    final String id = DocumentsContract.getDocumentId(uri);
+                    final Uri contentUri = ContentUris.withAppendedId(Uri.parse("content://downloads/public_downloads"),
+                            Long.valueOf(id));
+                    path = getDataColumn(context, contentUri, null, null);
+                    return path;
+                } else if (isMediaDocument(uri)) {
+                    // MediaProvider
+                    final String docId = DocumentsContract.getDocumentId(uri);
+                    final String[] split = docId.split(":");
+                    final String type = split[0];
+                    Uri contentUri = null;
+                    if ("image".equals(type)) {
+                        contentUri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                    } else if ("video".equals(type)) {
+                        contentUri = MediaStore.Video.Media.EXTERNAL_CONTENT_URI;
+                    } else if ("audio".equals(type)) {
+                        contentUri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
+                    }
+                    final String selection = "_id=?";
+                    final String[] selectionArgs = new String[]{split[1]};
+                    path = getDataColumn(context, contentUri, selection, selectionArgs);
+                    return path;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String getDataColumn(Context context, Uri uri, String selection, String[] selectionArgs) {
+        Cursor cursor = null;
+        final String column = "_data";
+        final String[] projection = {column};
+        try {
+            cursor = context.getContentResolver().query(uri, projection, selection, selectionArgs, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                final int column_index = cursor.getColumnIndexOrThrow(column);
+                return cursor.getString(column_index);
+            }
+        } finally {
+            if (cursor != null)
+                cursor.close();
+        }
+        return null;
+    }
+
+    private static boolean isExternalStorageDocument(Uri uri) {
+        return "com.android.externalstorage.documents".equals(uri.getAuthority());
+    }
+
+    private static boolean isDownloadsDocument(Uri uri) {
+        return "com.android.providers.downloads.documents".equals(uri.getAuthority());
+    }
+
+    private static boolean isMediaDocument(Uri uri) {
+        return "com.android.providers.media.documents".equals(uri.getAuthority());
+    }
+
+    /**
+     * 裁剪
+     *
+     * @param bitmap 原图
+     * @return 裁剪后的图像
+     */
+    public static Bitmap cropBitmap(Context context, Bitmap bitmap) {
+        int w = bitmap.getWidth(); //得到图片的宽，高
+        int h = bitmap.getHeight();
+        double ratioBitmap = w/(h*1.0);
+        int[] screenMatrix = getScreenMatrix(context);
+        double ratioScreen = screenMatrix[1]/(screenMatrix[0]*1.0);
+        int x = 0;
+        int y = 0;
+        int cropWidth = 0;
+        int cropHeight = 0;
+        if(Math.abs(ratioScreen - ratioBitmap) < 0){
+            cropWidth = w;
+            cropHeight = (int)ratioScreen*cropWidth;
+            x = 0;
+            y = (int)((h - cropHeight)/2);
+        }else{
+            cropHeight = h;
+            cropWidth = (int)(cropHeight/ratioScreen);
+            x = (int)((w - cropWidth)/2);
+            y = 0;
+        }
+
+        return Bitmap.createBitmap(bitmap, x, y, cropWidth, cropHeight, null, false);
+    }
+
+
+    public static int[] getScreenMatrix(Context context) {
+        WindowManager WM = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        DisplayMetrics outMetrics = new DisplayMetrics();
+        WM.getDefaultDisplay().getMetrics(outMetrics);
+        int mScreenWidth = outMetrics.widthPixels;
+        int mScreenHeight = outMetrics.heightPixels;
+        return new int[]{mScreenWidth, mScreenHeight};
     }
 }
