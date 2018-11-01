@@ -20,4 +20,6 @@ public class Constant {
 
     public static final String IMAGE_PREFIX= "HiAI_SmartPhoto_";
 
+    public static final double BASIC_WATERMARK_RATIO = 1.77142857;
+
 }

@@ -55,6 +55,7 @@ import java.util.TreeMap;
 import static android.graphics.Color.blue;
 import static android.graphics.Color.green;
 import static android.graphics.Color.red;
+import static com.huawei.hiaidemo.Utils.Constant.BASIC_WATERMARK_RATIO;
 import static com.huawei.hiaidemo.Utils.Constant.GALLERY_REQUEST_CODE;
 import static com.huawei.hiaidemo.Utils.Constant.IMAGE_CAPTURE_REQUEST_CODE;
 import static com.huawei.hiaidemo.Utils.Constant.IMAGE_PREFIX;
@@ -182,16 +183,43 @@ public class MyUtils {
     }
 
 
-    public static Bitmap addTextWatermark(Context context, Bitmap src, String content) {
-        Bitmap warterMark = BitmapFactory.decodeResource(context.getResources(),R.drawable.warter_mark);
+    public static Bitmap addTextWatermark(Context context, Bitmap src, String result) {
+        double scaleRatio = getMarkScaleValue(context, src);
 
-        Bitmap includeIcon = createWaterMaskBitmap(src,warterMark, 70,40);
+        Bitmap waterMark = getWaterMark(context,scaleRatio);
 
-        Paint waterTextPaint = getWaterTextPaint(content);
+        Bitmap includeIcon = createWaterMaskBitmap(src,waterMark, (int)(70*scaleRatio),(int)(40*scaleRatio));
 
-        Bitmap includeText = drawTextToBitmap(includeIcon,content, waterTextPaint, 220, 128);
+        Paint waterTextPaint = getWaterTextPaint(result, scaleRatio);
+
+        Bitmap includeText = drawTextToBitmap(includeIcon,result, waterTextPaint, (int)(220*scaleRatio), (int)(128*scaleRatio));
 
         return includeText;
+    }
+
+    private static Bitmap getWaterMark(Context context, double scaleRatio) {
+        Bitmap waterMark = BitmapFactory.decodeResource(context.getResources(),R.drawable.warter_mark);
+
+        int waterMark_W = waterMark.getWidth();
+        int waterMark_H = waterMark.getHeight();
+
+        Bitmap rgba =  waterMark.copy(Bitmap.Config.ARGB_8888, true);
+
+
+
+        Bitmap resizeBitmap = Bitmap.createScaledBitmap(rgba, (int)(waterMark_W*scaleRatio), (int)(waterMark_H*scaleRatio), false);
+
+        return resizeBitmap;
+    }
+
+    //根据传入图片的大小决定图片水印和文字水印的字体大小比例
+    private static double getMarkScaleValue(Context context, Bitmap src) {
+
+        int screenHight = getScreenMatrix(context)[1];
+
+        double ratio = src.getHeight()/(screenHight*1.0);
+
+        return ratio/BASIC_WATERMARK_RATIO;
     }
 
 
@@ -199,9 +227,9 @@ public class MyUtils {
         return src == null || src.getWidth() == 0 || src.getHeight() == 0;
     }
 
-    private static Paint getWaterTextPaint(String content){
+    private static Paint getWaterTextPaint(String content, double scaleRatio){
         int color = Color.WHITE;
-        int textSize = 80;
+        int textSize = (int)(80*scaleRatio);
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setColor(color);
         paint.setTypeface( Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD));
