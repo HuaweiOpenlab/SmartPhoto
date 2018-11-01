@@ -423,35 +423,77 @@ public class MyUtils {
     public static Bitmap cropBitmap(Context context, Bitmap bitmap) {
         int w = bitmap.getWidth(); //得到图片的宽，高
         int h = bitmap.getHeight();
-        double ratioBitmap = w/(h*1.0);
+        double ratioBitmap = h/(w*1.0);
         int[] screenMatrix = getScreenMatrix(context);
         double ratioScreen = screenMatrix[1]/(screenMatrix[0]*1.0);
         int x = 0;
         int y = 0;
         int cropWidth = 0;
         int cropHeight = 0;
-        if(Math.abs(ratioScreen - ratioBitmap) < 0){
-            cropWidth = w;
-            cropHeight = (int)ratioScreen*cropWidth;
-            x = 0;
-            y = (int)((h - cropHeight)/2);
+        if(Math.abs(ratioScreen - ratioBitmap) > 0.1){//有必要进行裁剪
+            if(ratioScreen > ratioBitmap){
+                cropHeight = h;
+                cropWidth = (int)(cropHeight/ratioScreen);
+                x = (int)((w - cropWidth)/2);
+                y = 0;
+            }else{
+                cropWidth = w;
+                cropHeight = (int)ratioScreen*cropWidth;
+                x = 0;
+                y = (int)((h - cropHeight)/2);
+            }
+            return Bitmap.createBitmap(bitmap, x, y, cropWidth, cropHeight, null, false);
+
         }else{
-            cropHeight = h;
-            cropWidth = (int)(cropHeight/ratioScreen);
-            x = (int)((w - cropWidth)/2);
-            y = 0;
+            return bitmap;
         }
 
-        return Bitmap.createBitmap(bitmap, x, y, cropWidth, cropHeight, null, false);
     }
 
-
+    //获取屏幕分辨率
     public static int[] getScreenMatrix(Context context) {
         WindowManager WM = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         DisplayMetrics outMetrics = new DisplayMetrics();
         WM.getDefaultDisplay().getMetrics(outMetrics);
         int mScreenWidth = outMetrics.widthPixels;
         int mScreenHeight = outMetrics.heightPixels;
-        return new int[]{mScreenWidth, mScreenHeight};
+        int[] notchSize = getNotchSize(context);
+        return new int[]{mScreenWidth, mScreenHeight + notchSize[1]};//要加上刘海的高度
     }
+
+    //获取刘海尺寸
+    public static int[] getNotchSize(Context context) {
+
+        int[] ret = new int[]{0, 0};
+
+        try {
+
+            ClassLoader cl = context.getClassLoader();
+
+            Class HwNotchSizeUtil = cl.loadClass("com.huawei.android.util.HwNotchSizeUtil");
+
+            Method get = HwNotchSizeUtil.getMethod("getNotchSize");
+
+            ret = (int[]) get.invoke(HwNotchSizeUtil);
+
+        } catch (ClassNotFoundException e) {
+
+            Log.e("test", "getNotchSize ClassNotFoundException");
+
+        } catch (NoSuchMethodException e) {
+
+            Log.e("test", "getNotchSize NoSuchMethodException");
+
+        } catch (Exception e) {
+
+            Log.e("test", "getNotchSize Exception");
+
+        } finally {
+
+            return ret;
+
+        }
+
+    }
+
 }

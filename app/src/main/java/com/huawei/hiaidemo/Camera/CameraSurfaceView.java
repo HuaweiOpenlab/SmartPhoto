@@ -42,8 +42,8 @@ public class CameraSurfaceView extends SurfaceView implements SurfaceHolder.Call
         WindowManager WM = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
         DisplayMetrics outMetrics = new DisplayMetrics();
         WM.getDefaultDisplay().getMetrics(outMetrics);
-        mScreenWidth = outMetrics.widthPixels;
         mScreenHeight = outMetrics.heightPixels;
+        mScreenWidth = outMetrics.widthPixels;
     }
 
     public void takePicture(Camera.ShutterCallback mShutterCallback, Camera.PictureCallback rawPictureCallback, Camera.PictureCallback jpegPictureCallback) {
