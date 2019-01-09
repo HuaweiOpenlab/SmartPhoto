@@ -53,7 +53,7 @@
 
 
 
-邮箱反馈途径：deveco@huawei.com
+邮箱反馈途径：histudio@huawei.com 
 
 
 
